@@ -1,0 +1,167 @@
+package net.purelic.commons;
+
+import com.google.api.core.ApiFuture;
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.firestore.*;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.FirebaseOptions;
+import com.google.firebase.cloud.FirestoreClient;
+import com.myjeeva.digitalocean.DigitalOcean;
+import com.myjeeva.digitalocean.impl.DigitalOceanClient;
+import com.rudderstack.sdk.java.RudderAnalytics;
+import net.md_5.bungee.api.plugin.Plugin;
+import net.md_5.bungee.config.Configuration;
+import net.md_5.bungee.config.ConfigurationProvider;
+import net.md_5.bungee.config.YamlConfiguration;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+public class Commons extends Plugin {
+
+    private static Configuration config;
+    private static Map<UUID, Map<String, Object>> playerCache;
+    private static Map<String, Map<String, Object>> serverCache;
+    private static Map<String, DocumentReference> documentCache;
+    private static Map<DocumentReference, ListenerRegistration> listenerCache;
+    private static Map<String, Object> generalCache;
+    private static Firestore firestore;
+    private static DigitalOcean digitalOcean;
+    private static RudderAnalytics analytics;
+
+    @Override
+    public void onEnable() {
+        config = this.getConfig();
+        playerCache = new HashMap<>();
+        serverCache = new HashMap<>();
+        documentCache = new HashMap<>();
+        listenerCache = new HashMap<>();
+        generalCache = new HashMap<>();
+        this.connectDatabase();
+        this.cleanDatabase();
+        this.connectDigitalOcean();
+        this.connectAnalytics();
+    }
+
+    @Override
+    public void onDisable() {
+        this.cleanDatabase();
+    }
+
+    public static Map<UUID, Map<String, Object>> getPlayerCache() {
+        return playerCache;
+    }
+
+    public static Map<String, Map<String, Object>> getServerCache() {
+        return serverCache;
+    }
+
+    public static Map<String, DocumentReference> getDocumentCache() {
+        return documentCache;
+    }
+
+    public static Map<DocumentReference, ListenerRegistration> getListenerCache() {
+        return listenerCache;
+    }
+
+    public static Map<String, Object> getGeneralCache() {
+        return generalCache;
+    }
+
+    public static Firestore getFirestore() {
+        return firestore;
+    }
+
+    public static DigitalOcean getDigitalOcean() {
+        return digitalOcean;
+    }
+
+    public RudderAnalytics getAnalytics() {
+        return analytics;
+    }
+
+    private Configuration getConfig() {
+        File config = new File(this.getDataFolder(), "config.yml");
+
+        try {
+            return ConfigurationProvider.getProvider(YamlConfiguration.class).load(config);
+        } catch (IOException e) {
+            System.out.println("Error getting config file. Shutting down proxy...");
+            e.printStackTrace();
+            this.getProxy().stop();
+            return null;
+        }
+    }
+
+    private void connectDatabase() {
+        try {
+            // Path to database auth file
+            String authPath = this.getDataFolder() + "/purelic-firebase-adminsdk.json";
+
+            // Connect to Firebase Firestore
+            InputStream serviceAccount = new FileInputStream(authPath);
+            GoogleCredentials credentials = GoogleCredentials.fromStream(serviceAccount);
+            FirebaseOptions options = FirebaseOptions.builder().setCredentials(credentials).build();
+            FirebaseApp.initializeApp(options);
+
+            // Save database reference
+            firestore = FirestoreClient.getFirestore();
+            System.out.println("Connected to Firebase!");
+        } catch (IOException e) {
+            System.out.println("Error connecting to the database. Shutting down proxy...");
+            e.printStackTrace();
+            this.getProxy().stop();
+        }
+    }
+
+    private void cleanDatabase() {
+        System.out.println("Cleaning up server documents...");
+        this.deleteCollection(firestore.collection("servers"));
+        this.deleteCollection(firestore.collection("server_ips"));
+    }
+
+    private void deleteCollection(CollectionReference collection) {
+        try {
+            int deleted = 0;
+            ApiFuture<QuerySnapshot> future = collection.get();
+            List<QueryDocumentSnapshot> documents = future.get().getDocuments();
+
+            for (QueryDocumentSnapshot document : documents) {
+                if (document.getData().containsKey("droplet_id")) {
+                    Long dropletId = document.getLong("droplet_id");
+
+                    if (dropletId != null) {
+                        System.out.println("Deleting droplet (" + dropletId + ")");
+                        digitalOcean.deleteDroplet(dropletId.intValue());
+                    }
+                }
+
+                document.getReference().delete();
+                deleted++;
+            }
+
+            System.out.println("Deleted " + deleted + " document(s) from collection " + collection.getPath());
+        } catch (Exception e) {
+            System.err.println("Error deleting collection : " + e.getMessage());
+        }
+    }
+
+    private void connectDigitalOcean() {
+        String auth = config.getString("digital_ocean_auth");
+        digitalOcean = new DigitalOceanClient(auth);
+    }
+
+    private void connectAnalytics() {
+        analytics = RudderAnalytics.builder(
+                config.getString("analytics.write_key"),
+                config.getString("analytics.data_plane_url")
+        ).build();
+    }
+
+}
