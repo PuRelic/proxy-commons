@@ -82,7 +82,7 @@ public class Commons extends Plugin {
         return digitalOcean;
     }
 
-    public RudderAnalytics getAnalytics() {
+    public static RudderAnalytics getAnalytics() {
         return analytics;
     }
 
@@ -159,8 +159,8 @@ public class Commons extends Plugin {
 
     private void connectAnalytics() {
         analytics = RudderAnalytics.builder(
-                config.getString("analytics.write_key"),
-                config.getString("analytics.data_plane_url")
+            config.getString("analytics.write_key"),
+            config.getString("analytics.data_plane_url")
         ).build();
     }
 
