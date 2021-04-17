@@ -24,6 +24,11 @@
             <name>rudderstack</name>
             <url>https://dl.bintray.com/rudderstack/rudderstack</url>
         </repository>
+        <repository>
+            <id>dv8tion</id>
+            <name>m2-dv8tion</name>
+            <url>https://m2.dv8tion.net/releases</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -47,6 +52,17 @@
             <groupId>com.rudderstack.sdk.java</groupId>
             <artifactId>rudderanalytics-client</artifactId>
             <version>1.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>net.dv8tion</groupId>
+            <artifactId>JDA</artifactId>
+            <version>4.2.0_252</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>club.minnced</groupId>
+                    <artifactId>opus-java</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 

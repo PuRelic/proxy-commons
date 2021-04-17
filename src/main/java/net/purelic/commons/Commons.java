@@ -9,11 +9,17 @@ import com.google.firebase.cloud.FirestoreClient;
 import com.myjeeva.digitalocean.DigitalOcean;
 import com.myjeeva.digitalocean.impl.DigitalOceanClient;
 import com.rudderstack.sdk.java.RudderAnalytics;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.utils.ChunkingFilter;
+import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.config.Configuration;
 import net.md_5.bungee.config.ConfigurationProvider;
 import net.md_5.bungee.config.YamlConfiguration;
 
+import javax.security.auth.login.LoginException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -34,6 +40,7 @@ public class Commons extends Plugin {
     private static Firestore firestore;
     private static DigitalOcean digitalOcean;
     private static RudderAnalytics analytics;
+    private static JDA discordBot;
 
     @Override
     public void onEnable() {
@@ -47,6 +54,7 @@ public class Commons extends Plugin {
         this.cleanDatabase();
         this.connectDigitalOcean();
         this.connectAnalytics();
+        this.connectDiscordBot();
     }
 
     @Override
@@ -84,6 +92,10 @@ public class Commons extends Plugin {
 
     public static RudderAnalytics getAnalytics() {
         return analytics;
+    }
+
+    public static JDA getDiscordBot() {
+        return discordBot;
     }
 
     private Configuration getConfig() {
@@ -162,6 +174,21 @@ public class Commons extends Plugin {
             config.getString("analytics.write_key"),
             config.getString("analytics.data_plane_url")
         ).build();
+    }
+
+    private void connectDiscordBot() {
+        JDABuilder builder = JDABuilder
+            .createDefault(config.getString("discord.bot_token"))
+            .setChunkingFilter(ChunkingFilter.ALL)
+            .setMemberCachePolicy(MemberCachePolicy.ALL)
+            .enableIntents(GatewayIntent.GUILD_MEMBERS);
+
+        try {
+            discordBot = builder.build();
+            discordBot.awaitReady();
+        } catch (LoginException | InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
 }
