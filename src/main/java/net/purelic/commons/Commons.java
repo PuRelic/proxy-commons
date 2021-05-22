@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.logging.Level;
 
 public class Commons extends Plugin {
 
@@ -104,9 +105,7 @@ public class Commons extends Plugin {
         try {
             return ConfigurationProvider.getProvider(YamlConfiguration.class).load(config);
         } catch (IOException e) {
-            System.out.println("Error getting config file. Shutting down proxy...");
-            e.printStackTrace();
-            this.getProxy().stop();
+            this.fatalError("Error getting config file!", e);
             return null;
         }
     }
@@ -124,16 +123,15 @@ public class Commons extends Plugin {
 
             // Save database reference
             firestore = FirestoreClient.getFirestore();
-            System.out.println("Connected to Firebase!");
+
+            this.logInfo("Connected to Firebase!");
         } catch (IOException e) {
-            System.out.println("Error connecting to the database. Shutting down proxy...");
-            e.printStackTrace();
-            this.getProxy().stop();
+            this.fatalError("Error connecting to Firebase!", e);
         }
     }
 
     private void cleanDatabase() {
-        System.out.println("Cleaning up server documents...");
+        this.logInfo("Cleaning up server documents...");
         this.deleteCollection(firestore.collection("servers"));
         this.deleteCollection(firestore.collection("server_ips"));
     }
@@ -149,7 +147,7 @@ public class Commons extends Plugin {
                     Long dropletId = document.getLong("droplet_id");
 
                     if (dropletId != null) {
-                        System.out.println("Deleting droplet (" + dropletId + ")");
+                        this.logInfo("Deleting droplet (" + dropletId + ")");
                         digitalOcean.deleteDroplet(dropletId.intValue());
                     }
                 }
@@ -158,15 +156,17 @@ public class Commons extends Plugin {
                 deleted++;
             }
 
-            System.out.println("Deleted " + deleted + " document(s) from collection " + collection.getPath());
+            this.logInfo("Deleted " + deleted + " document(s) from collection " + collection.getPath());
         } catch (Exception e) {
-            System.err.println("Error deleting collection : " + e.getMessage());
+            this.log(Level.WARNING, "Error deleting collection: " + e.getMessage());
         }
     }
 
     private void connectDigitalOcean() {
         String auth = config.getString("digital_ocean_auth");
         digitalOcean = new DigitalOceanClient(auth);
+
+        this.logInfo("Connected to Digital Ocean!");
     }
 
     private void connectAnalytics() {
@@ -174,6 +174,8 @@ public class Commons extends Plugin {
             config.getString("analytics.write_key"),
             config.getString("analytics.data_plane_url")
         ).build();
+
+        this.logInfo("Connected to RudderStack!");
     }
 
     private void connectDiscordBot() {
@@ -186,9 +188,25 @@ public class Commons extends Plugin {
         try {
             discordBot = builder.build();
             discordBot.awaitReady();
+            this.logInfo("Connected to Discord!");
         } catch (LoginException | InterruptedException e) {
+            this.log(Level.SEVERE, "Error starting up the Discord bot!");
             e.printStackTrace();
         }
+    }
+
+    private void fatalError(String message, Exception e) {
+        this.getLogger().log(Level.SEVERE, message + " Shutting down proxy...");
+        e.printStackTrace();
+        this.getProxy().stop();
+    }
+
+    private void logInfo(String message) {
+        this.log(Level.INFO, message);
+    }
+
+    private void log(Level level, String message) {
+        this.getLogger().log(level, message);
     }
 
 }
