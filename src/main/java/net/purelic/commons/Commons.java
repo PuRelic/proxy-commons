@@ -105,7 +105,7 @@ public class Commons extends Plugin {
         try {
             return ConfigurationProvider.getProvider(YamlConfiguration.class).load(config);
         } catch (IOException e) {
-            this.fatalError("Error getting config file.", e);
+            this.fatalError("Error getting config file!", e);
             return null;
         }
     }
@@ -123,9 +123,10 @@ public class Commons extends Plugin {
 
             // Save database reference
             firestore = FirestoreClient.getFirestore();
+
             this.logInfo("Connected to Firebase!");
         } catch (IOException e) {
-            this.fatalError("Error connecting to the database.", e);
+            this.fatalError("Error connecting to Firebase!", e);
         }
     }
 
@@ -146,7 +147,7 @@ public class Commons extends Plugin {
                     Long dropletId = document.getLong("droplet_id");
 
                     if (dropletId != null) {
-                        this.logInfo("Deleting droplet(" + dropletId + ")");
+                        this.logInfo("Deleting droplet (" + dropletId + ")");
                         digitalOcean.deleteDroplet(dropletId.intValue());
                     }
                 }
@@ -157,7 +158,7 @@ public class Commons extends Plugin {
 
             this.logInfo("Deleted " + deleted + " document(s) from collection " + collection.getPath());
         } catch (Exception e) {
-            this.getLogger().log(Level.WARNING, "Error deleting collection : " + e.getMessage());
+            this.log(Level.WARNING, "Error deleting collection: " + e.getMessage());
         }
     }
 
@@ -165,7 +166,7 @@ public class Commons extends Plugin {
         String auth = config.getString("digital_ocean_auth");
         digitalOcean = new DigitalOceanClient(auth);
 
-        this.logInfo("Connected to Digital Ocean");
+        this.logInfo("Connected to Digital Ocean!");
     }
 
     private void connectAnalytics() {
@@ -174,7 +175,7 @@ public class Commons extends Plugin {
             config.getString("analytics.data_plane_url")
         ).build();
 
-        this.logInfo("Connected to RudderStack");
+        this.logInfo("Connected to RudderStack!");
     }
 
     private void connectDiscordBot() {
@@ -187,20 +188,25 @@ public class Commons extends Plugin {
         try {
             discordBot = builder.build();
             discordBot.awaitReady();
+            this.logInfo("Connected to Discord!");
         } catch (LoginException | InterruptedException e) {
+            this.log(Level.SEVERE, "Error starting up the Discord bot!");
             e.printStackTrace();
         }
-        this.logInfo("Connected to " + discordBot.getSelfUser().getName());
     }
 
-    private void fatalError(String message, Exception e){
+    private void fatalError(String message, Exception e) {
         this.getLogger().log(Level.SEVERE, message + " Shutting down proxy...");
         e.printStackTrace();
         this.getProxy().stop();
     }
 
-    private void logInfo(String message){
-        this.getLogger().log(Level.INFO, message);
+    private void logInfo(String message) {
+        this.log(Level.INFO, message);
+    }
+
+    private void log(Level level, String message) {
+        this.getLogger().log(level, message);
     }
 
 }
