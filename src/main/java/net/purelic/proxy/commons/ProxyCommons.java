@@ -1,4 +1,4 @@
-package net.purelic.commons;
+package net.purelic.proxy.commons;
 
 import com.google.api.core.ApiFuture;
 import com.google.auth.oauth2.GoogleCredentials;
@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
 
-public class Commons extends Plugin {
+public class ProxyCommons extends Plugin {
 
     private static Configuration config;
     private static Map<UUID, Map<String, Object>> playerCache;
